@@ -1,5 +1,6 @@
-"""A starter watch list: tech companies known to post on Greenhouse, Lever or Ashby (each board
-checked to exist in October 2026). add_companies(starter_list=True) adds them all.
+"""A starter watch list: tech companies known to post on Greenhouse, Lever or Ashby, or on their
+own career sites (Workday, Amazon, Microsoft), each checked to exist in October 2026.
+add_companies(starter_list=True) adds them all.
 
 Companies move between job boards now and then; a board that stops existing shows up as an
 error in list_companies, and remove_company drops it.
@@ -33,12 +34,31 @@ STARTER = {
     "Stripe": Board("greenhouse", "stripe"),
     "Twilio": Board("greenhouse", "twilio"),
     "Vercel": Board("greenhouse", "vercel"),
+    "Affirm": Board("greenhouse", "affirm"),
+    "Block": Board("greenhouse", "block"),
+    "Flexport": Board("greenhouse", "flexport"),
+    "Neuralink": Board("greenhouse", "neuralink"),
+    "Nuro": Board("greenhouse", "nuro"),
+    "Roblox": Board("greenhouse", "roblox"),
+    "Rubrik": Board("greenhouse", "rubrik"),
+    "Samsara": Board("greenhouse", "samsara"),
+    "SpaceX": Board("greenhouse", "spacex"),
+    "Together AI": Board("greenhouse", "togetherai"),
+    "Twitch": Board("greenhouse", "twitch"),
+    "Verkada": Board("greenhouse", "verkada"),
+    "Waymo": Board("greenhouse", "waymo"),
     # Lever
     "CRED": Board("lever", "cred"),
     "Meesho": Board("lever", "meesho"),
     "Palantir": Board("lever", "palantir"),
     "Spotify": Board("lever", "spotify"),
     # Ashby
+    "1Password": Board("ashby", "1password"),
+    "Harvey": Board("ashby", "harvey"),
+    "Quora": Board("ashby", "quora"),
+    "Sierra": Board("ashby", "sierra"),
+    "Skydio": Board("ashby", "skydio"),
+    "Snowflake": Board("ashby", "snowflake"),
     "Cohere": Board("ashby", "cohere"),
     "Linear": Board("ashby", "linear"),
     "Notion": Board("ashby", "notion"),
@@ -50,4 +70,24 @@ STARTER = {
     "Replit": Board("ashby", "replit"),
     "Sentry": Board("ashby", "sentry"),
     "Supabase": Board("ashby", "supabase"),
+    # Workday career sites (early-career jobs only)
+    "Adobe": Board("workday", "adobe.wd5/external_experienced"),
+    "Broadcom": Board("workday", "broadcom.wd1/External_Career"),
+    "Capital One": Board("workday", "capitalone.wd12/Capital_One"),
+    "Cisco": Board("workday", "cisco.wd5/Cisco_Careers"),
+    "CrowdStrike": Board("workday", "crowdstrike.wd5/crowdstrikecareers"),
+    "Disney": Board("workday", "disney.wd5/disneycareer"),
+    "HP": Board("workday", "hp.wd5/ExternalCareerSite"),
+    "Intel": Board("workday", "intel.wd1/External"),
+    "Mastercard": Board("workday", "mastercard.wd1/CorporateCareers"),
+    "NVIDIA": Board("workday", "nvidia.wd5/NVIDIAExternalCareerSite"),
+    "PayPal": Board("workday", "paypal.wd1/jobs"),
+    "Red Hat": Board("workday", "redhat.wd5/jobs"),
+    "Salesforce": Board("workday", "salesforce.wd12/External_Career_Site"),
+    "Samsung": Board("workday", "sec.wd3/Samsung_Careers"),
+    "Workday": Board("workday", "workday.wd5/Workday"),
+    "Zoom": Board("workday", "zoom.wd5/Zoom"),
+    # Their own career sites (early-career jobs only)
+    "Amazon": Board("amazon", "amazon"),
+    "Microsoft": Board("microsoft", "microsoft"),
 }

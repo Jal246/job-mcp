@@ -23,7 +23,10 @@ ROLE_KINDS = [
     ("product", r"product manag|\bapm\b|program manag|product management|product operations"),
     ("business", r"\bsales\b|marketing|\bfinance\b|financial|accounting|revenue|legal|recruit|"
                  r"investment|\bmba\b|partnerships|strategy|customer success|support|"
-                 r"communications|\bpeople\b|operations|\bbusiness\b"),
+                 r"communications|\bpeople\b|operations|\bbusiness\b|writer|writing|content"),
+    # Before software: these are "engineer" titles too.
+    ("hardware", r"hardware|\basic\b|silicon|electrical|circuit|\bfpga\b|\brf\b|wireless|"
+                 r"mechanical|manufacturing|analog|\bpcb\b|semiconductor|physical design"),
     ("ml", r"machine learning|\bml\b|\bai\b|applied scien|research (?:engineer|scien)|deep learning|"
            r"\bnlp\b|computer vision|\bllm"),
     ("data", r"\bdata\b|analytics|analyst|statistic"),
@@ -46,12 +49,14 @@ def role_kind(title: str) -> str:
 
 # --- Can you apply? ---------------------------------------------------------------------------
 
+# Matched in titles ignoring case, except the capitalized abbreviations ("MS", "BS").
 DEGREES = {
     "phd": r"\bph\.?\s?d\b|doctoral",
-    "masters": r"\bmaster'?s\b|\bm\.?s\.? students?\b",
+    "masters": r"\bmaster['’]?s\b|(?-i:\bMS\b)|\bm\.s\.|"
+               r"\bgraduate (?:student|intern|internship)s?\b|\bintern,\s*graduate\b",
     "mba": r"\bmba\b",
     "high_school": r"high[- ]school",
-    "bachelors": r"bachelor'?s|undergrad(?:uate)?|\bb\.?s\.?\b|\bb\.?a\.?\b",
+    "bachelors": r"bachelor['’]?s|undergrad(?:uate)?|(?-i:\bBS\b)|\bb\.s\.|(?-i:\bBA\b)",
 }
 DEGREE_NAMES = {"phd": "PhD", "masters": "Master's", "mba": "MBA", "high_school": "high school",
                 "bachelors": "Bachelor's"}
@@ -140,12 +145,13 @@ def eligibility(job: Job, profile: Profile) -> tuple[list[str], list[str]]:
     opening = job.description[:2000].lower()
 
     # Degree: a title naming other degrees ("PhD Intern") is for those students.
-    named = {degree for degree, pattern in DEGREES.items() if re.search(pattern, title)}
+    named = {degree for degree, pattern in DEGREES.items()
+             if re.search(pattern, job.title, re.IGNORECASE)}
     if named and prefs.degree not in named:
         blockers.append(f"for {' or '.join(DEGREE_NAMES[d] for d in sorted(named))} students")
     elif not named and prefs.degree == "bachelors" and re.search(
             r"(?:pursuing|enrolled in|currently in) an? (?:ph\.?d|master)", opening) and not re.search(
-            DEGREES["bachelors"], job.description.lower()):
+            DEGREES["bachelors"], job.description, re.IGNORECASE):
         warnings.append("the description asks for graduate students")
 
     # Season and year, for internships.

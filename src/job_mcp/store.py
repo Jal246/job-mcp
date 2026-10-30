@@ -299,6 +299,12 @@ class Store:
         new = [job for job_id, job in fresh.items() if known.get(job_id, "gone") is not None]
         return Update(new=new, closed=len(gone), open=len(fresh))
 
+    def known(self, name: str) -> dict[str, Job]:
+        """Every job saved for a company (open or closed), by id."""
+        with closing(self._connect()) as db:
+            rows = db.execute("SELECT * FROM jobs WHERE company = ?", (name,)).fetchall()
+        return {row["id"]: _job(row).job for row in rows}
+
     def get(self, job_id: str) -> StoredJob:
         with closing(self._connect()) as db:
             row = db.execute("SELECT * FROM jobs WHERE id = ?", (job_id.strip(),)).fetchone()

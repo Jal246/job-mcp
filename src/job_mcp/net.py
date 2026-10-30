@@ -49,12 +49,22 @@ async def get_json(url: str) -> dict | list:
 
     Raises NotFound for a 404, and NetError for anything else that goes wrong.
     """
+    return await _request("GET", url)
+
+
+async def post_json(url: str, body: dict) -> dict | list:
+    """POST body (as JSON) to url and return the JSON answer, like get_json. Some career sites
+    search this way."""
+    return await _request("POST", url, body)
+
+
+async def _request(method: str, url: str, body: dict | None = None) -> dict | list:
     async with httpx.AsyncClient(headers=HEADERS, timeout=TIMEOUT_SECONDS, transport=TRANSPORT,
                                  follow_redirects=True) as client:
         for attempt in range(ATTEMPTS):
             last = attempt == ATTEMPTS - 1
             try:
-                response = await client.get(url)
+                response = await client.request(method, url, json=body)
             except httpx.HTTPError as error:
                 if last:
                     raise NetError(f"couldn't reach {httpx.URL(url).host}: {error!r}") from None

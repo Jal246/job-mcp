@@ -18,8 +18,8 @@ from job_mcp import skills
 
 Section = Literal["education", "skills", "projects", "experience", "activities", "certifications"]
 WorkAuthorization = Literal["us_citizen", "green_card", "f1_student", "needs_sponsorship"]
-RoleKind = Literal["software", "data", "ml", "infrastructure", "security", "design", "product",
-                   "business"]
+RoleKind = Literal["software", "data", "ml", "infrastructure", "security", "hardware", "design",
+                   "product", "business"]
 Degree = Literal["high_school", "bachelors", "masters", "phd", "mba"]
 
 

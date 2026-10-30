@@ -23,7 +23,9 @@ from job_mcp import classify, net
 
 Source = Literal["greenhouse", "lever", "ashby"]
 SOURCES: tuple[Source, ...] = ("greenhouse", "lever", "ashby")
-SOURCE_NAMES = {"greenhouse": "Greenhouse", "lever": "Lever", "ashby": "Ashby"}
+SOURCE_NAMES = {"greenhouse": "Greenhouse", "lever": "Lever", "ashby": "Ashby",
+                # Big companies' own career sites, read by careers.py.
+                "workday": "Workday", "amazon": "Amazon Jobs", "microsoft": "Microsoft Careers"}
 
 API_URLS = {
     "greenhouse": "https://boards-api.greenhouse.io/v1/boards/{}/jobs?content=true",
@@ -84,7 +86,7 @@ def _unique(items) -> tuple[str, ...]:
     return tuple(dict.fromkeys(item for item in items if item))
 
 
-def _job(board: Board, company: str, native_id, title: str, url: str, locations,
+def make_job(board: Board, company: str, native_id, title: str, url: str, locations,
          workplace: str | None, employment_type: str | None, department: str | None,
          posted: str | None, salary: str | None, description: str) -> Job:
     """A Job, with the parts every source works out the same way filled in."""
@@ -117,7 +119,7 @@ def parse_greenhouse(data: dict, board: Board, company: str) -> list[Job]:
         departments = item.get("departments") or [{}]
         # Some companies number their departments ("8611 Security Analytics").
         department = re.sub(r"^\d+\s+", "", departments[0].get("name") or "") or None
-        jobs.append(_job(
+        jobs.append(make_job(
             board, company, item["id"], item.get("title", ""), item.get("absolute_url", ""),
             _split_locations(location), classify.workplace(location), None, department,
             _date(item.get("first_published") or item.get("updated_at")), None, description,
@@ -151,7 +153,7 @@ def parse_lever(data: list, board: Board, company: str) -> list[Job]:
                          + classify.html_to_text(section.get("content") or ""))
         parts.append(item.get("additionalPlain") or "")
         description = "\n\n".join(part.strip() for part in parts if part.strip())
-        jobs.append(_job(
+        jobs.append(make_job(
             board, company, item["id"], item.get("text", ""), item.get("hostedUrl", ""), locations,
             classify.workplace(item.get("workplaceType"), categories.get("location")),
             categories.get("commitment"), categories.get("team") or categories.get("department"),
@@ -178,7 +180,7 @@ def parse_ashby(data: dict, board: Board, company: str) -> list[Job]:
         salary = (compensation.get("scrapeableCompensationSalarySummary")
                   or compensation.get("compensationTierSummary"))
         employment = item.get("employmentType")
-        jobs.append(_job(
+        jobs.append(make_job(
             board, company, item["id"], item.get("title", ""), item.get("jobUrl", ""), locations,
             "remote" if item.get("isRemote") else classify.workplace(item.get("workplaceType"),
                                                                      item.get("location")),

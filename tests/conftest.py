@@ -7,6 +7,7 @@ a refresh handles jobs being added or taken down.
 
 import copy
 import html
+import json
 
 import httpx
 import pytest
@@ -75,6 +76,60 @@ BOARDS = {
 # Boards whose API is broken: they always answer 500.
 BROKEN = {("lever", "downco")}
 
+# Career sites, in the formats the real ones answer in.
+WORKDAY_SEARCHES = {  # searchText -> the jobs found (Workday's search is fuzzy).
+    "intern": [{"title": "Software Engineering Intern", "externalPath": "/job/San-Jose/Software-Engineering-Intern_JR1"},
+               {"title": "Director of Sales", "externalPath": "/job/Austin/Director-of-Sales_JR2"}],
+    "new grad": [{"title": "Software Engineer, New Grad", "externalPath": "/job/Austin/Software-Engineer-New-Grad_JR3"}],
+    "university graduate": [{"title": "Software Engineering Intern", "externalPath": "/job/San-Jose/Software-Engineering-Intern_JR1"}],
+}
+WORKDAY_JOBS = {
+    "/job/San-Jose/Software-Engineering-Intern_JR1": {
+        "title": "Software Engineering Intern", "location": "San Jose, CA", "startDate": "2026-10-13",
+        "timeType": "Full time", "externalUrl": "https://acmewd.wd1.myworkdayjobs.com/Careers/job/San-Jose/Software-Engineering-Intern_JR1",
+        "jobDescription": "<p>Write Python and Go.</p><p>Pay: $40 - $50 per hour.</p>"},
+    "/job/Austin/Software-Engineer-New-Grad_JR3": {
+        "title": "Software Engineer, New Grad", "location": "Austin, TX", "additionalLocations": ["Remote, US"],
+        "startDate": "2026-10-01", "jobDescription": "<p>C++ on embedded systems.</p>"},
+}
+AMAZON_JOB = {
+    "id": "a1", "id_icims": "10593054", "title": "Software Dev Engineer Intern, Summer 2027",
+    "job_path": "/en/jobs/10593054/software-dev-engineer-intern", "normalized_location": "Seattle, Washington, USA",
+    "posted_date": "October 30, 2026", "is_intern": True, "job_category": "Software Development",
+    "description": "<p>Build services at scale.</p>",
+    "basic_qualifications": "- Currently enrolled in a Bachelor's degree<br/>- Experience with Java or Python",
+    "preferred_qualifications": "Experience with AWS"}
+MICROSOFT_POSITION = {"id": 111, "displayJobId": "200001", "name": "Software Engineering Intern"}
+MICROSOFT_DETAILS = {**MICROSOFT_POSITION, "standardizedLocations": ["Redmond, WA, US"], "postedTs": 1790812800,
+                     "jobDescription": "<p>Write C# and TypeScript.</p><p>USD $6,810 - $13,480 per month.</p>",
+                     "publicUrl": "https://apply.careers.microsoft.com/careers/job/111",
+                     "workLocationOption": ["onsite"], "department": ["Engineering"]}
+
+
+def fake_career_site(request: httpx.Request) -> httpx.Response | None:
+    """Answer like Workday (the made-up "acmewd.wd1/Careers" site), Amazon or Microsoft; None
+    for other hosts."""
+    url = request.url
+    if url.host == "acmewd.wd1.myworkdayjobs.com" and url.path.startswith("/wday/cxs/acmewd/Careers"):
+        path = url.path.removeprefix("/wday/cxs/acmewd/Careers")
+        if request.method == "POST" and path == "/jobs":
+            found = WORKDAY_SEARCHES.get(json.loads(request.content)["searchText"], [])
+            return httpx.Response(200, json={"total": len(found), "jobPostings": found})
+        if path in WORKDAY_JOBS:
+            return httpx.Response(200, json={"jobPostingInfo": WORKDAY_JOBS[path]})
+        return httpx.Response(404)
+    if url.host.endswith(".myworkdayjobs.com"):
+        return httpx.Response(422)  # Workday's answer for a site that doesn't exist.
+    if url.host == "www.amazon.jobs" and url.path == "/en/search.json":
+        found = [AMAZON_JOB] if url.params["base_query"] == "intern" else []
+        return httpx.Response(200, json={"hits": len(found), "jobs": found})
+    if url.host == "apply.careers.microsoft.com" and url.path == "/api/pcsx/search":
+        found = [MICROSOFT_POSITION] if url.params["query"] == "intern" else []
+        return httpx.Response(200, json={"data": {"count": len(found), "positions": found}})
+    if url.host == "apply.careers.microsoft.com" and url.path == "/api/pcsx/position_details":
+        return httpx.Response(200, json={"data": MICROSOFT_DETAILS})
+    return None
+
 
 def board_of(url: httpx.URL) -> tuple[str, str] | None:
     """The (source, board) a fake API URL asks for."""
@@ -98,6 +153,8 @@ def fake_boards(monkeypatch):
 
     def handler(request: httpx.Request) -> httpx.Response:
         requests.append(str(request.url))
+        if (answer := fake_career_site(request)) is not None:
+            return answer
         key = board_of(request.url)
         if key in BROKEN:
             return httpx.Response(500)

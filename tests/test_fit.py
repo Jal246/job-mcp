@@ -159,3 +159,25 @@ def test_work_authorization(description, status, blockers, warnings):
     found_blockers, found_warnings = eligibility(job(description=description), me)
     assert [b.split(": '")[0] for b in found_blockers] == blockers
     assert [w.split(": '")[0] for w in found_warnings] == warnings
+
+
+@pytest.mark.parametrize("title, blockers", [
+    ("2027 Summer Intern, MS, Software Engineering", ["for Master's students"]),
+    ("Software Engineering - Intern, Graduate", ["for Master's students"]),
+    ("Software Engineering - Intern, Bachelor’s", []),
+    ("BS/MS Software Engineering Intern", []),
+    ("Software Engineering Intern (MS Teams)", ["for Master's students"]),  # Rare; accepted.
+])
+def test_eligibility_degree_abbreviations(title, blockers):
+    assert blockers_of(job(title)) == blockers
+
+
+@pytest.mark.parametrize("title", ["ASIC Engineer Intern", "Hardware Development Engineer Intern",
+                                   "Electrical Engineer Intern, Implant Systems", "Wireless Hardware Engineer Intern"])
+def test_hardware_roles(title):
+    assert role_kind(title) == "hardware"
+    assert blockers_of(job(title)) == ["a hardware role, not software/data/ml"]
+
+
+def test_technical_writing_is_not_software():
+    assert role_kind("Technical Writer Intern, Developer Experience") == "business"

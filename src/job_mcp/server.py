@@ -21,7 +21,7 @@ from typing import Literal
 from mcp.server.mcpserver import Context, MCPServer
 from mcp.server.mcpserver.exceptions import ToolError
 
-from job_mcp import boards, documents, fit, guides, profile, skills
+from job_mcp import boards, careers, documents, fit, guides, profile, skills
 from job_mcp.boards import Board, BoardError, Job
 from job_mcp.profile import Profile, Resume
 from job_mcp.starter import STARTER
@@ -59,7 +59,7 @@ mcp = MCPServer(
         "search_jobs searches them by words, places, level (intern, new_grad, junior, mid, "
         "senior, staff, manager), remote, and how recently they were posted or first seen; it "
         "refreshes stale boards itself. get_job reads a job's full description. add_companies "
-        "watches more companies by name or careers-page URL (starter_list=True adds about 40 "
+        "watches more companies by name or careers-page URL (starter_list=True adds about 75 "
         "tech companies); list_companies shows the watch list. refresh_jobs fetches every board "
         "now and reports what's new. "
         "The user has a profile (import_resume, save_profile, get_profile): match_jobs ranks "
@@ -143,7 +143,7 @@ async def _refresh(store: Store, companies: list[Company],
     """Fetch the companies' boards and save their jobs. Returns, per company, what changed or
     why it failed."""
     results = await _gather_limited(
-        [boards.fetch_board(company.board, company.name) for company in companies],
+        [careers.fetch(company.board, company.name, store.known(company.name)) for company in companies],
         progress, "Refreshed")
     changes: dict[str, Update | str] = {}
     for company, jobs in zip(companies, results):
@@ -166,7 +166,7 @@ async def _refresh_stale(store: Store, watched: list[Company], progress: Progres
     what happened, to show above the results."""
     if not watched:
         raise ToolError("not watching any companies yet: call add_companies first "
-                        "(starter_list=True adds about 40 tech companies)")
+                        "(starter_list=True adds about 75 tech companies)")
     notes = []
     if stale := [company for company in watched if _stale(company)]:
         changes = await _refresh(store, stale, progress)
@@ -181,14 +181,16 @@ async def _refresh_stale(store: Store, watched: list[Company], progress: Progres
 
 async def _find(name: str) -> tuple[str, Board, list[Job]]:
     """A company's (display name, board, jobs), from its name, careers-page URL or starter entry."""
-    if board := boards.parse_board(name):
-        # Named as in the starter list if it's there; else after its board ("cred" -> "Cred").
-        display = next((starter for starter, known in STARTER.items() if known == board),
-                       board.name[:1].upper() + board.name[1:])
-        return display, board, await boards.fetch_board(board, display)
     for starter_name, board in STARTER.items():
         if starter_name.lower() == name.lower():
-            return starter_name, board, await boards.fetch_board(board, starter_name)
+            return starter_name, board, await careers.fetch(board, starter_name)
+    if board := careers.parse_site(name) or boards.parse_board(name):
+        # Named as in the starter list if it's there; else after its board ("cred" -> "Cred",
+        # "nvidia.wd5/NVIDIAExternalCareerSite" -> "Nvidia").
+        short = re.split(r"[./]", board.name)[0]
+        display = next((starter for starter, known in STARTER.items() if known == board),
+                       short[:1].upper() + short[1:])
+        return display, board, await careers.fetch(board, display)
     found = await boards.detect(name, name)
     return name, found.board, found.jobs
 
@@ -198,13 +200,15 @@ async def add_companies(ctx: Context, companies: list[str] | None = None,
                         starter_list: bool = False) -> str:
     """Watch companies' job boards: their open jobs are fetched now and kept up to date, ready
     for search_jobs. A company can be given by name ("Stripe": its board is found on Greenhouse,
-    Lever or Ashby automatically), by careers-page URL ("https://jobs.lever.co/spotify"), or as
-    "source:board" ("ashby:openai").
+    Lever or Ashby automatically), by careers-page URL ("https://jobs.lever.co/spotify", or a
+    Workday site like "https://nvidia.wd5.myworkdayjobs.com/NVIDIAExternalCareerSite"), or as
+    "source:board" ("ashby:openai"). "Amazon" and "Microsoft" read their own career sites. For
+    Workday, Amazon and Microsoft, only early-career jobs (internships, new grad) are watched.
 
     Args:
         companies: Companies to watch, e.g. ["Stripe", "Notion", "https://jobs.lever.co/cred"].
-        starter_list: Also add a starter list of about 40 tech companies (Stripe, OpenAI,
-            Anthropic, Databricks, Figma, Notion, Spotify, Groww, CRED, Meesho...).
+        starter_list: Also add a starter list of about 75 tech companies (Stripe, OpenAI, NVIDIA,
+            Amazon, Microsoft, Anthropic, Databricks, Figma, Waymo, Salesforce, Adobe...).
     """
     names = [" ".join(name.split()) for name in companies or [] if name.strip()]
     if starter_list:
@@ -258,7 +262,7 @@ def list_companies() -> str:
     companies = store.companies()
     if not companies:
         return ("Not watching any companies yet. add_companies adds them (starter_list=True adds "
-                "about 40 tech companies).")
+                "about 75 tech companies).")
     lines = [f"Watching {len(companies)} companies, with "
              f"{sum(c.open_jobs for c in companies):,} open jobs:"]
     for company in companies:

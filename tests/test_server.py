@@ -185,3 +185,19 @@ async def test_get_job_in_parts():
     assert rest.endswith("\n\nr the summer.\n\n## What you'll do\n- Write Rust\n- Review code\n\nWe sponsor visas.")
     result = await call("get_job", {"job_id": "nope"})
     assert result.is_error and "no job with id 'nope'" in text_of(result)
+
+
+async def test_add_career_sites(fake_boards):
+    reply = await text("add_companies", {"companies": [
+        "https://acmewd.wd1.myworkdayjobs.com/en-US/Careers", "Amazon", "microsoft"]})
+    assert reply.splitlines() == [
+        "Now watching 3 more companies, with 4 open jobs between them.",
+        "- Acmewd: Workday board 'acmewd.wd1/Careers', 2 open jobs",
+        "- Amazon: Amazon Jobs board 'amazon', 1 open jobs",
+        "- Microsoft: Microsoft Careers board 'microsoft', 1 open jobs",
+    ]
+    fake_boards.requests.clear()
+    assert "0 new jobs, 0 closed" in await text("refresh_jobs")
+    # Refreshing only searched again: no job's details were fetched twice.
+    assert not [url for url in fake_boards.requests if "/job/" in url or "position_details" in url]
+    assert "Software Dev Engineer Intern" in await text("search_jobs", {"query": "intern"})

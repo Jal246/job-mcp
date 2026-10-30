@@ -2,7 +2,7 @@
 
 A Python [MCP](https://modelcontextprotocol.io) server that turns Claude into a job-search assistant: it watches companies' own job boards, ranks every open job by how well it fits **you**, writes a tailored one-page resume and cover letter for each application (checked so nothing is made up), preps you for interviews, and tracks every application.
 
-No API keys and no scraping of sites that forbid it: Greenhouse, Lever and Ashby, the job boards thousands of companies use for their careers pages, all have free public APIs meant to be read. And no LLM API key either: Claude, already in your terminal, does the writing; the server supplies the facts, the rules and the checks.
+No API keys and no scraping of sites that forbid it: Greenhouse, Lever and Ashby, the job boards thousands of companies use for their careers pages, all have free public APIs meant to be read. Big companies' own career sites (Workday sites like NVIDIA's, Salesforce's and Adobe's, plus Amazon and Microsoft) are read through the JSON their careers pages load, politely: only early-career jobs, and only new jobs' details. And no LLM API key either: Claude, already in your terminal, does the writing; the server supplies the facts, the rules and the checks.
 
 ## Demo
 
@@ -30,7 +30,7 @@ No API keys and no scraping of sites that forbid it: Greenhouse, Lever and Ashby
 
 | Tool | What it's for |
 |---|---|
-| `add_companies` | Watch companies by name ("Stripe": the board is found on Greenhouse, Lever or Ashby automatically), careers-page URL, or `source:board`. `starter_list=True` adds 39 tech companies. |
+| `add_companies` | Watch companies by name ("Stripe": the board is found on Greenhouse, Lever or Ashby automatically), careers-page URL, or `source:board`. Workday careers-page URLs, "Amazon" and "Microsoft" work too. `starter_list=True` adds 76 tech companies (about 16,000 jobs). |
 | `search_jobs` | Full-text search (SQLite FTS5 with BM25 ranking; title matches first) with filters for places, remote, level, company, posting date and "new since". "India" finds "Bangalore", "Bay Area" finds Palo Alto, and the same role posted for many cities is shown once. |
 | `get_job` | A job's full description and details. |
 | `refresh_jobs` | Fetch every board now: new jobs per company; jobs taken down are marked closed. |
@@ -59,6 +59,7 @@ No API keys and no scraping of sites that forbid it: Greenhouse, Lever and Ashby
 src/job_mcp/
   net.py        polite HTTP: timeouts, retries when a server is busy
   boards.py     Greenhouse / Lever / Ashby → one Job shape; finding a company's board
+  careers.py    Workday, Amazon and Microsoft career sites: early-career jobs, new ones' details only
   classify.py   level from the title, remote/hybrid/onsite, salary ranges, HTML → text
   store.py      SQLite + FTS5: watch list, jobs, new/closed tracking, search
   skills.py     150+ skills and how jobs write them; a job's must-haves vs nice-to-haves
@@ -71,7 +72,7 @@ src/job_mcp/
   server.py     the MCP tools
 ```
 
-Only `server.py` knows about MCP; everything else is plain Python, tested on its own (161 tests, with fake job boards, so they never touch the network).
+Only `server.py` knows about MCP; everything else is plain Python, tested on its own (206 tests, with fake job boards, so they never touch the network).
 
 ## Setup
 
