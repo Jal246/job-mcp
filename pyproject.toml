@@ -1,0 +1,26 @@
+[project]
+name = "job-mcp"
+version = "0.1.0"
+description = "MCP server that finds jobs for you on companies' own job boards (Greenhouse, Lever, Ashby)"
+readme = "README.md"
+authors = [
+    { name = "Jal246", email = "181914226+Jal246@users.noreply.github.com" }
+]
+requires-python = ">=3.13"
+dependencies = [
+    "httpx>=0.28.1",
+    "mcp[cli]>=2.3.0",
+]
+
+[project.scripts]
+job-mcp = "job_mcp:main"
+
+[build-system]
+requires = ["uv_build>=0.13.5,<0.14.0"]
+build-backend = "uv_build"
+
+[dependency-groups]
+dev = [
+    "anyio>=4.15.1",
+    "pytest>=9.2.0",
+]
