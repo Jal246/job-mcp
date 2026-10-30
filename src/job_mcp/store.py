@@ -182,6 +182,19 @@ def same_role(job: Job) -> tuple:
     return job.company.lower(), " ".join(re.findall(r"[\w+#]+", title)), job.level
 
 
+def group(jobs: list[StoredJob], limit: int) -> list[Listing]:
+    """The first `limit` roles among jobs (in their order), with later postings of the same
+    role for other places merged into each."""
+    listings: dict[tuple, Listing] = {}
+    for stored in jobs:
+        key = same_role(stored.job)
+        if key in listings:
+            listings[key].also.append(stored)
+        elif len(listings) < limit:
+            listings[key] = Listing(stored, [])
+    return list(listings.values())
+
+
 def _job(row: sqlite3.Row) -> StoredJob:
     return StoredJob(Job(
         id=row["id"], company=row["company"], title=row["title"], url=row["url"],
@@ -293,14 +306,21 @@ class Store:
             raise StoreError(f"no job with id '{job_id}' (search_jobs gives each job's id)")
         return _job(row)
 
-    def search(self, query: str = "", *, places: list[str] | None = None,
-               remote_only: bool = False, levels: list[str] | None = None,
-               companies: list[str] | None = None, posted_within_days: int | None = None,
-               new_within_days: int | None = None, include_closed: bool = False,
-               sort: str = "relevance", limit: int = 20) -> tuple[list[Listing], int]:
-        """Jobs matching every filter given, best first, with the same role posted for several
-        cities merged into one Listing. Returns up to limit listings, and how many jobs matched
-        in all.
+    def search(self, query: str = "", *, limit: int = 20, **filters) -> tuple[list[Listing], int]:
+        """Jobs matching every filter given (see find), best first, with the same role posted
+        for several cities merged into one Listing. Returns up to limit listings, and how many
+        jobs matched in all."""
+        # Fetch extra jobs: several may merge into one listing.
+        found, total = self.find(query, rows=limit * 10, **filters)
+        return group(found, limit), total
+
+    def find(self, query: str = "", *, places: list[str] | None = None,
+             remote_only: bool = False, levels: list[str] | None = None,
+             companies: list[str] | None = None, posted_within_days: int | None = None,
+             new_within_days: int | None = None, include_closed: bool = False,
+             sort: str = "relevance", rows: int | None = None) -> tuple[list[StoredJob], int]:
+        """Jobs matching every filter given, best first: at most `rows` of them (all if None),
+        and how many matched in all.
 
         places matches any of them, in the job's locations ("India" finds "Bengaluru, India";
         "Remote" also finds jobs the board marks remote). sort is "relevance" (needs a query;
@@ -346,24 +366,15 @@ class Store:
             order = "jobs.posted DESC NULLS LAST, jobs.first_seen DESC"
         with closing(self._connect()) as db:
             total = db.execute(f"SELECT count(*) FROM {source} {conditions}", params).fetchone()[0]
-            # Fetch extra rows: several may merge into one listing.
-            rows = db.execute(f"SELECT jobs.* FROM {source} {conditions} ORDER BY {order} "
-                              "LIMIT ?", [*params, limit * 10]).fetchall()
+            found = db.execute(f"SELECT jobs.* FROM {source} {conditions} ORDER BY {order} "
+                               "LIMIT ?", [*params, -1 if rows is None else rows]).fetchall()
 
         if match and sort == "relevance":
             # BM25 can rank a job that mentions every word in its description above one with
             # most of them in its title; put title matches first (sorted() keeps BM25's order
             # among equals).
-            rows = sorted(rows, key=lambda row: -title_matches(query, row["title"]))
-        listings: dict[tuple, Listing] = {}
-        for row in rows:
-            stored = _job(row)
-            key = same_role(stored.job)
-            if key in listings:
-                listings[key].also.append(stored)
-            elif len(listings) < limit:
-                listings[key] = Listing(stored, [])
-        return list(listings.values()), total
+            found = sorted(found, key=lambda row: -title_matches(query, row["title"]))
+        return [_job(row) for row in found], total
 
     def counts(self) -> dict[str, int]:
         """How many open jobs there are at each level."""

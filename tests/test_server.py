@@ -41,7 +41,9 @@ async def test_lists_all_tools():
         tools = await client.list_tools()
         assert {t.name for t in tools.tools} == {
             "add_companies", "list_companies", "remove_company", "refresh_jobs", "search_jobs",
-            "get_job",
+            "get_job", "import_resume", "save_profile", "get_profile", "match_jobs",
+            "explain_fit", "tailor_resume", "save_resume", "write_cover_letter",
+            "save_cover_letter", "prep_interview", "track_application", "list_applications",
         }
 
 
