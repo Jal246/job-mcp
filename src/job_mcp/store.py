@@ -80,10 +80,14 @@ PLACE_NAMES = [
     {"bangalore", "bengaluru"}, {"gurgaon", "gurugram"}, {"bombay", "mumbai"},
     {"madras", "chennai"}, {"calcutta", "kolkata"}, {"new delhi", "delhi"},
     {"sf", "san francisco"}, {"nyc", "new york"}, {"uk", "united kingdom"},
+    {"bay area", "sf bay area", "san francisco bay area"},
 ]
 # Boards often write just the city ("Bangalore", not "Bangalore, India"), so searching for a
-# country also searches for its main tech cities.
+# country (or region) also searches for its main tech cities.
 COUNTRY_CITIES = {
+    "bay area": ["san francisco", "oakland", "san jose", "palo alto", "mountain view",
+                 "menlo park", "sunnyvale", "san mateo", "foster city", "redwood city",
+                 "santa clara", "cupertino", "berkeley"],
     "india": ["bengaluru", "bangalore", "mumbai", "pune", "hyderabad", "chennai", "delhi",
               "gurugram", "gurgaon", "noida", "kolkata", "ahmedabad"],
     "united kingdom": ["london", "manchester", "edinburgh", "cambridge"],

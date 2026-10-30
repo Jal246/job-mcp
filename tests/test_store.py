@@ -36,6 +36,7 @@ def test_place_names():
     assert place_names("Bangalore") == {"bangalore", "bengaluru"}
     assert {"india", "bengaluru", "bangalore", "pune"} <= place_names("India")
     assert {"uk", "united kingdom", "london"} <= place_names("UK")
+    assert {"san francisco", "palo alto", "foster city"} <= place_names("SF Bay Area")
     assert place_names("  Paris ") == {"paris"}
 
 

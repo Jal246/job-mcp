@@ -299,7 +299,8 @@ async def search_jobs(
         query: Words to search for, e.g. "backend python" or '"machine learning" infrastructure'.
             Leave empty to list jobs by the other filters alone.
         locations: Places, any of which may match, e.g. ["India"], ["Bengaluru", "Remote"],
-            ["London", "Dublin"]. India, the UK, Canada, Germany and Australia also match
+            ["London", "Dublin"]. "Bay Area" matches San Francisco, Palo Alto, Mountain
+            View and the rest. India, the UK, Canada, Germany and Australia also match
             their main tech cities (many boards write just "Bangalore"); for other countries,
             add the cities too.
         remote_only: Only jobs marked remote (combine with locations for "remote in India").
