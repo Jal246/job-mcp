@@ -90,6 +90,48 @@ def _years(text: str) -> set[int]:
     return years
 
 
+# What postings say about who may work there. Citizenship and clearance rule out everyone who
+# isn't a citizen; export-control rules ("U.S. persons") rule out visa holders; "no sponsorship"
+# rules out people who need a work visa, and is worth checking for F-1 students (internships
+# are usually on CPT, which needs no sponsorship, but some companies mean "now or later").
+CITIZENS_ONLY = re.compile(
+    r"security clearance|clearance (?:is )?required|\bts/sci\b|"
+    r"u\.?s\.? citizenship (?:is )?required|requires? u\.?s\.? citizenship|"
+    r"must be (?:a )?u\.?s\.? citizens?|only u\.?s\.? citizens", re.IGNORECASE)
+US_PERSONS = re.compile(r"\bitar\b|export control|u\.?s\.? persons?\b", re.IGNORECASE)
+NO_SPONSORSHIP = re.compile(
+    r"(?:not|unable to|cannot|won't|will not|does not|do not)\s+(?:be able to\s+)?"
+    r"(?:offer|provide|sponsor)\w*(?:\s+\w+){0,4}?\s+(?:visa|sponsorship|immigration)|"
+    r"without (?:the need for )?(?:current or future |the need for )?(?:visa |employer )?sponsorship|"
+    r"\bno (?:visa )?sponsorship", re.IGNORECASE)
+
+
+def _quote(pattern: re.Pattern, text: str) -> str | None:
+    """The sentence of text that matches pattern, shortened."""
+    for sentence in re.split(r"(?<=[.!?])\s+|\n", text):
+        if pattern.search(sentence):
+            return sentence.strip()[:160]
+    return None
+
+
+def authorization(job: Job, status: str) -> tuple[list[str], list[str]]:
+    """(blockers, warnings) from what the posting says about who may work there."""
+    blockers, warnings = [], []
+    if status == "us_citizen":
+        return blockers, warnings
+    if quote := _quote(CITIZENS_ONLY, job.description):
+        blockers.append(f"requires US citizenship or a security clearance: {quote!r}")
+    elif status != "green_card" and (quote := _quote(US_PERSONS, job.description)):
+        blockers.append(f"export-controlled (US citizens and permanent residents): {quote!r}")
+    elif status != "green_card" and (quote := _quote(NO_SPONSORSHIP, job.description)):
+        if status == "needs_sponsorship":
+            blockers.append(f"won't sponsor a visa: {quote!r}")
+        else:
+            warnings.append(f"says it won't sponsor visas; internships on CPT usually don't need "
+                            f"it, but ask the recruiter: {quote!r}")
+    return blockers, warnings
+
+
 def eligibility(job: Job, profile: Profile) -> tuple[list[str], list[str]]:
     """(blockers, warnings): reasons you can't apply, and things to check before you do."""
     prefs = profile.preferences
@@ -141,6 +183,11 @@ def eligibility(job: Job, profile: Profile) -> tuple[list[str], list[str]]:
         if all(v is False for verdict in verdicts for v in verdict):
             blockers.append(f"based in {'; '.join(job.locations[:3])}, outside "
                             f"{' and '.join(prefs.work_countries)}")
+
+    # Work authorization.
+    more_blockers, more_warnings = authorization(job, prefs.work_authorization)
+    blockers += more_blockers
+    warnings += more_warnings
 
     # Kind of role.
     kind = role_kind(job.title)

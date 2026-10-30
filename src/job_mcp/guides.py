@@ -31,11 +31,15 @@ the profile is rejected, so tailor by choosing and rewording, never by adding.
    bullets that match the job's required skills.
 3. **Skills**: only skills in the profile. Put the ones this job asks for first in each group,
    and drop ones that are irrelevant to it. Never list a missing skill, even if it's required.
-4. **Experience**: keep every job (gaps look worse than unrelated work); 1-2 bullets each,
-   chosen and reworded for what transfers (teaching, communication, coordination).
-5. **Sections**: section_order puts the strongest first. For a student, usually education,
-   skills, projects, experience, certifications.
-6. Keep the name, email, phone and links exactly as in the profile.
+4. **Experience**: tech jobs first. A student may leave out unrelated jobs when the space is
+   better spent on projects or activities (a missing section is fine; a made-up one never
+   is). Keep 1-2 bullets for an unrelated job only if it shows something the job asks for
+   (communication, leadership).
+5. **Activities**: hackathons and clubs show initiative; for each, what was built and with
+   what, if the profile says.
+6. **Sections**: section_order puts the strongest first and leaves out empty ones. For a
+   student, usually education, skills, projects, then experience or activities.
+7. Keep the name, email, phone and links exactly as in the profile.
 
 If save_resume says the page overflows, cut the weakest bullet and try again.
 """

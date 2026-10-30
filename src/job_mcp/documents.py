@@ -144,6 +144,17 @@ def _resume_story(resume: Resume, style: Styles, width: float) -> list:
                                      *_bullets(job.bullets, style), Spacer(1, style.gap)]))
     sections["experience"] = ("Experience", entries)
 
+    entries = []
+    for activity in resume.activities:
+        left = f"<b>{_text(activity.name)}</b>"
+        if activity.role:
+            left += f"  |  <i>{_text(activity.role)}</i>"
+        if activity.location:
+            left += f", {_text(activity.location)}"
+        entries.append(KeepTogether([_row(left, _text(activity.dates), style, width),
+                                     *_bullets(activity.bullets, style), Spacer(1, style.gap)]))
+    sections["activities"] = (resume.activities_title, entries)
+
     sections["certifications"] = ("Certifications", [
         Paragraph(f"<b>{_text(cert.name)}</b>" + (f" - {_text(cert.detail)}" if cert.detail else ""),
                   style.body) for cert in resume.certifications])

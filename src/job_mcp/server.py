@@ -511,6 +511,8 @@ def _reason(blocker: str) -> str:
     States" -> "outside United States"."""
     if "outside " in blocker:
         return "outside " + blocker.split("outside ", 1)[1]
+    if ": '" in blocker:  # A quote from the posting.
+        return blocker.split(": '", 1)[0]
     return re.sub(r"\s*\(.*\)$", "", blocker)
 
 

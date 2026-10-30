@@ -94,3 +94,16 @@ def test_style_warnings():
     errors, warnings = check_resume(resume, master)
     assert errors == []
     assert [w.split(" (")[0].split(":")[0] for w in warnings] == ["starts weakly", "too long"]
+
+
+def test_activities_are_checked():
+    master = ada()
+    master.activities = [profile.Activity(name="Example Hackathon", role="Participant", dates="Oct 2026",
+                                          bullets=["Built a demo in Python with a team of 4."])]
+    assert check_resume(resume_of(master, activities=[master.activities[0].model_dump()]), master) == ([], [])
+    made_up = [{"name": "Example Hackathon", "role": "Winner", "dates": "Oct 2026"}]
+    assert check_resume(resume_of(master, activities=made_up), master)[0] == [
+        "Example Hackathon: role and dates must be as in the profile"]
+    made_up = [{"name": "Famous Hackathon", "role": "Participant"}]
+    assert check_resume(resume_of(master, activities=made_up), master)[0] == [
+        "activity 'Famous Hackathon' isn't in the profile"]

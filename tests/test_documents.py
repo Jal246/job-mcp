@@ -51,3 +51,13 @@ def test_render_cover_letter(tmp_path):
     for words in ["ADA EXAMPLE", "October 29, 2026", "Acme Hiring Team", "Dear Hiring Team,",
                   "First paragraph.", "Sincerely,"]:
         assert words in text
+
+
+def test_render_activities(tmp_path):
+    resume = resume_of(ada(), activities_title="Hackathons & Activities", activities=[
+        {"name": "Example Hackathon", "role": "Participant", "location": "San Francisco",
+         "dates": "Oct 2026", "bullets": ["Built a demo with a team of 4."]}])
+    documents.render_resume(resume, tmp_path / "r.pdf")
+    text = documents.pdf_text(tmp_path / "r.pdf")
+    assert "HACKATHONS & ACTIVITIES" in text and "Example Hackathon" in text
+    assert text.index("EXPERIENCE") < text.index("HACKATHONS")

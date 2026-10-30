@@ -16,7 +16,8 @@ from pydantic import BaseModel, Field
 
 from job_mcp import skills
 
-Section = Literal["education", "skills", "projects", "experience", "certifications"]
+Section = Literal["education", "skills", "projects", "experience", "activities", "certifications"]
+WorkAuthorization = Literal["us_citizen", "green_card", "f1_student", "needs_sponsorship"]
 RoleKind = Literal["software", "data", "ml", "infrastructure", "security", "design", "product",
                    "business"]
 Degree = Literal["high_school", "bachelors", "masters", "phd", "mba"]
@@ -47,6 +48,15 @@ class Project(BaseModel):
     bullets: list[str] = []
 
 
+class Activity(BaseModel):
+    """A hackathon, club, competition or volunteer role."""
+    name: str = Field(description='e.g. "Cerebral Valley AI Hackathon"')
+    role: str = Field(default="", description='e.g. "Participant", "Finalist", "Organizer"')
+    location: str = ""
+    dates: str = ""
+    bullets: list[str] = []
+
+
 class SkillGroup(BaseModel):
     name: str = Field(description='e.g. "Languages", "Frameworks", "Tools"')
     items: list[str]
@@ -68,9 +78,11 @@ class Resume(BaseModel):
     skills: list[SkillGroup] = []
     projects: list[Project] = []
     experience: list[Experience] = []
+    activities: list[Activity] = []
+    activities_title: str = Field(default="Activities", description='e.g. "Hackathons & Activities"')
     certifications: list[Certification] = []
     section_order: list[Section] = ["education", "skills", "projects", "experience",
-                                    "certifications"]
+                                    "activities", "certifications"]
 
 
 class Preferences(BaseModel):
@@ -83,6 +95,9 @@ class Preferences(BaseModel):
     work_countries: list[str] = Field(default=["United States"],
                                       description="Countries you can work in (for remote jobs)")
     roles: list[RoleKind] = ["software", "data", "ml", "infrastructure", "security"]
+    work_authorization: WorkAuthorization = Field(default="us_citizen", description=(
+        "For US jobs: us_citizen, green_card, f1_student (international student; internships "
+        "usually on CPT), or needs_sponsorship"))
 
 
 class Profile(Resume):
@@ -115,6 +130,8 @@ def text_of(resume: Resume) -> str:
         parts += [project.name, ", ".join(project.tech), *project.bullets]
     for job in resume.experience:
         parts += [job.organization, job.title, *job.bullets]
+    for activity in resume.activities:
+        parts += [activity.name, activity.role, *activity.bullets]
     for cert in resume.certifications:
         parts += [cert.name, cert.detail]
     if isinstance(resume, Profile):
@@ -188,6 +205,12 @@ def check_resume(resume: Resume, master: Profile, also_allowed: str = "") -> tup
             errors.append(f"project {project.name!r} isn't in the profile")
         elif project.url and not _same(project.url, known.url):
             errors.append(f"{project.name}: the link must be the profile's ({known.url})")
+    for activity in resume.activities:
+        known = next((a for a in master.activities if _same(a.name, activity.name)), None)
+        if not known:
+            errors.append(f"activity {activity.name!r} isn't in the profile")
+        elif not (_same(activity.role, known.role) and _same(activity.dates, known.dates)):
+            errors.append(f"{activity.name}: role and dates must be as in the profile")
     for cert in resume.certifications:
         if not any(_same(cert.name, known.name) for known in master.certifications):
             errors.append(f"certification {cert.name!r} isn't in the profile")
@@ -197,7 +220,8 @@ def check_resume(resume: Resume, master: Profile, also_allowed: str = "") -> tup
     if made_up := sorted(numbers_in(text_of(resume)) - numbers_in(text_of(master) + also_allowed)):
         errors.append(f"numbers the profile never mentions: {', '.join(made_up)}")
 
-    bullets = [b for p in resume.projects for b in p.bullets] + [b for j in resume.experience for b in j.bullets]
+    bullets = [b for part in [*resume.projects, *resume.experience, *resume.activities]
+               for b in part.bullets]
     for bullet in bullets:
         if bullet.lower().startswith(WEAK_STARTS):
             warnings.append(f"starts weakly (use a strong verb like Built, Designed, Cut): {bullet[:60]!r}")

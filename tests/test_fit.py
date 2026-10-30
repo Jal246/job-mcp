@@ -134,3 +134,28 @@ def test_assess_prefers_roles_listed_first():
     software = assess(job("Software Engineering Intern"), me, today).score
     ml = assess(job("Machine Learning Intern"), me, today).score
     assert software > ml
+
+
+@pytest.mark.parametrize("description, status, blockers, warnings", [
+    ("Candidates must be eligible for a U.S. security clearance.", "f1_student",
+     ["requires US citizenship or a security clearance"], []),
+    ("Candidates must be eligible for a U.S. security clearance.", "green_card",
+     ["requires US citizenship or a security clearance"], []),
+    ("This role is subject to ITAR export control rules.", "f1_student",
+     ["export-controlled (US citizens and permanent residents)"], []),
+    ("This role is subject to ITAR export control rules.", "green_card", [], []),
+    ("We are unable to sponsor work visas for this role.", "f1_student",
+     [], ["says it won't sponsor visas; internships on CPT usually don't need it, but ask the recruiter"]),
+    ("Must be authorized to work without the need for current or future sponsorship.", "needs_sponsorship",
+     ["won't sponsor a visa"], []),
+    ("We will not provide immigration sponsorship.", "green_card", [], []),
+    ("Candidates must be eligible for a U.S. security clearance.", "us_citizen", [], []),
+    # Equal opportunity text mentions citizenship without requiring it.
+    ("We hire regardless of citizenship, national origin or veteran status.", "f1_student", [], []),
+])
+def test_work_authorization(description, status, blockers, warnings):
+    me = ada()
+    me.preferences.work_authorization = status
+    found_blockers, found_warnings = eligibility(job(description=description), me)
+    assert [b.split(": '")[0] for b in found_blockers] == blockers
+    assert [w.split(": '")[0] for w in found_warnings] == warnings
