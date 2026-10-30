@@ -7,11 +7,14 @@ If a resume runs a little over one page, it's set slightly smaller (down to 90%)
 This module knows nothing about MCP, so it can be used and tested as plain Python.
 """
 
+import html
+import re
 from dataclasses import dataclass
 from pathlib import Path
 from xml.sax.saxutils import escape
 
 import pypdfium2
+from reportlab.pdfbase.pdfmetrics import stringWidth
 from reportlab.lib.enums import TA_CENTER, TA_RIGHT
 from reportlab.lib.pagesizes import LETTER
 from reportlab.lib.styles import ParagraphStyle
@@ -75,9 +78,13 @@ def styles(scale: float) -> Styles:
 
 
 def _row(left: str, right: str, style: Styles, width: float) -> Table:
-    """A line with text on the left and on the right (a school and its dates)."""
+    """A line with text on the left and on the right (a school and its dates). The right side
+    gets exactly the width its text needs, so neither side wraps unless it must."""
+    plain = html.unescape(re.sub(r"<[^>]+>", "", right))
+    needed = stringWidth(plain, FONT, style.right.fontSize) + 4
+    right_width = min(max(needed, width * 0.1), width * 0.45)
     table = Table([[Paragraph(left, style.body), Paragraph(right, style.right)]],
-                  colWidths=[width * 0.7, width * 0.3])
+                  colWidths=[width - right_width, right_width])
     table.setStyle(TableStyle([("LEFTPADDING", (0, 0), (-1, -1), 0),
                                ("RIGHTPADDING", (0, 0), (-1, -1), 0),
                                ("TOPPADDING", (0, 0), (-1, -1), 0),
@@ -146,13 +153,11 @@ def _resume_story(resume: Resume, style: Styles, width: float) -> list:
 
     entries = []
     for activity in resume.activities:
-        left = f"<b>{_text(activity.name)}</b>"
-        if activity.role:
-            left += f"  |  <i>{_text(activity.role)}</i>"
-        if activity.location:
-            left += f", {_text(activity.location)}"
-        entries.append(KeepTogether([_row(left, _text(activity.dates), style, width),
-                                     *_bullets(activity.bullets, style), Spacer(1, style.gap)]))
+        # Laid out like a job: the name (which can be long) on its own line, then role and place.
+        lines = [_row(f"<b>{_text(activity.name)}</b>", _text(activity.dates), style, width)]
+        if detail := ", ".join(filter(None, [activity.role, activity.location])):
+            lines.append(Paragraph(f"<i>{_text(detail)}</i>", style.body))
+        entries.append(KeepTogether([*lines, *_bullets(activity.bullets, style), Spacer(1, style.gap)]))
     sections["activities"] = (resume.activities_title, entries)
 
     sections["certifications"] = ("Certifications", [
